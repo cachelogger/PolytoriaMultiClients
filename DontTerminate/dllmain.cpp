@@ -13,8 +13,23 @@
 #include <psapi.h>
 #include <winternl.h>
 
+wchar_t selfDllPath[MAX_PATH];
+
+std::string to_narrow(const std::wstring& wide) {
+    std::string narrow;
+    narrow.reserve(wide.size());
+    for (auto wc : wide) {
+        narrow.push_back(static_cast<char>(wc));  // Naive conversion, only safe for ASCII
+    }
+    return narrow;
+}
+
 void LogMessage(const char* message) {
-    std::ofstream logFile("C:\\Users\\franc\\source\\repos\\DontTerminate\\x64\\Release\\output.txt", std::ios::app);
+    LPCWSTR path = L"%USERPROFILE%\\AppData\\Local\\Temp\\DontTerminate.log";
+    WCHAR dest[MAX_PATH];
+    ExpandEnvironmentStringsW(path, dest, MAX_PATH);
+
+    std::ofstream logFile(dest, std::ios::app);
     logFile << message << std::endl;
     logFile.close();
 }
@@ -156,15 +171,6 @@ BOOL WINAPI hkProcess32Next(HANDLE hSnapshot, LPPROCESSENTRY32 lppe) {
     return result;
 }
 
-std::string to_narrow(const std::wstring& wide) {
-    std::string narrow;
-    narrow.reserve(wide.size());
-    for (auto wc : wide) {
-        narrow.push_back(static_cast<char>(wc));  // Naive conversion, only safe for ASCII
-    }
-    return narrow;
-}
-
 BOOL WINAPI hkCreateProcessW(
     LPCWSTR lpApplicationName,
     LPWSTR lpCommandLine,
@@ -210,7 +216,7 @@ BOOL WINAPI hkCreateProcessW(
         lpStartupInfo, lpProcessInformation);
 
     // Inject self into the new process
-    InjectDLL(lpProcessInformation->dwProcessId, "C:\\Users\\franc\\source\\repos\\DontTerminate\\x64\\Release\\DontTerminate.dll");
+    InjectDLL(lpProcessInformation->dwProcessId, to_narrow(selfDllPath).c_str());
 
     return TRUE;
 }
@@ -245,7 +251,7 @@ BOOL WINAPI hkCreateProcessA(
         		lpStartupInfo, lpProcessInformation);
 
     // Inject self into the new process
-    InjectDLL(lpProcessInformation->dwProcessId, "C:\\Users\\franc\\source\\repos\\DontTerminate\\x64\\Release\\DontTerminate.dll");
+    InjectDLL(lpProcessInformation->dwProcessId, to_narrow(selfDllPath).c_str());
 
     return TRUE;
 }
@@ -357,6 +363,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+        GetTempPathW(MAX_PATH, selfDllPath);
+        wcscat_s(selfDllPath, L"DontTerminate.dll");
+        LogMessage("Attached.");
+        LogMessage(std::format("DLL attached. Is copied to: {}", to_narrow(selfDllPath)).c_str());
+
         SetupHooks();
         break;
     case DLL_THREAD_ATTACH:

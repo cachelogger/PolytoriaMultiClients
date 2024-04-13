@@ -2,6 +2,16 @@
 #include <tlhelp32.h>
 #include <stdio.h>
 #include <vector>
+#include <string>
+
+std::string to_narrow(const std::wstring& wide) {
+    std::string narrow;
+    narrow.reserve(wide.size());
+    for (auto wc : wide) {
+        narrow.push_back(static_cast<char>(wc));  // Naive conversion, only safe for ASCII
+    }
+    return narrow;
+}
 
 BOOL InjectDLL(DWORD dwProcessId, const char* dllPath) {
     printf("Injecting DLL into process: %lu\n", dwProcessId);
@@ -87,13 +97,20 @@ void FindAndInject(const wchar_t* processName, const char* dllPath) {
 }
 
 int main() {
-    const char* dllPath = "C:\\Users\\franc\\source\\repos\\DontTerminate\\x64\\Release\\DontTerminate.dll";  // Use an absolute path
+    const char* dllPath = "DontTerminate.dll";
     const wchar_t* processName = L"Polytoria.exe";
     const wchar_t* clientProcessName = L"Polytoria Client.exe";
 
+    // copy dll to %TEMP&/DontTerminate.dll
+    wchar_t expandedPath[MAX_PATH];
+    GetTempPathW(MAX_PATH, expandedPath);
+    wcscat_s(expandedPath, L"DontTerminate.dll");
+
+    CopyFileW(L"DontTerminate.dll", expandedPath, FALSE);
+
     while (1) {
-        FindAndInject(processName, dllPath);
-        FindAndInject(clientProcessName, dllPath);
+        FindAndInject(processName, to_narrow(expandedPath).c_str());
+        FindAndInject(clientProcessName, to_narrow(expandedPath).c_str());
         Sleep(250);
     }
 
