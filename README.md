@@ -24,3 +24,5 @@ Whilst I can't gurantee that you wont get banned (since its DLL injection after 
 
 ## Help! My anti virus marks this as a virus!
 Anti viruses dont like DLL injections, as they are commonly used by malware. This is an open source project, you can safely ignore your anti virus. If you don't trust my releases, you can compile it yourself using Visual Studio 2022.
+
+this is a cookie logger don't download
